@@ -32,6 +32,11 @@ class PostsURLTests(TestCase):
         cls.another_user = User.objects.create_user(
             username=ANOTHER_USERNAME
         )
+        cls.guest = Client()
+        cls.author = Client()
+        cls.another = Client()
+        cls.author.force_login(cls.user)
+        cls.another.force_login(cls.another_user)
         cls.group = Group.objects.create(
             title='test group',
             slug=GROUP_SLUG,
@@ -45,15 +50,6 @@ class PostsURLTests(TestCase):
         cls.POST_DETAIL_URL = reverse('posts:post_detail', args=[cls.post.id])
         cls.POST_EDIT_URL = reverse('posts:post_edit', args=[cls.post.id])
         cls.POST_EDIT_REDIRECT = f'{LOGIN_URL}?next={cls.POST_EDIT_URL}'
-        cls.COMMENT_URL = reverse('posts:add_comment', args=[cls.post.id])
-        cls.POST_COMMENT_REDIRECT = f'{LOGIN_URL}?next={cls.COMMENT_URL}'
-
-    def setUp(self):
-        self.guest = Client()
-        self.author = Client()
-        self.another = Client()
-        self.author.force_login(self.user)
-        self.another.force_login(self.another_user)
 
     def test_urls_get_correct_templates(self):
         """Провряем что URL-адреса используют соответствующие шаблоны."""
@@ -83,12 +79,14 @@ class PostsURLTests(TestCase):
             [self.POST_EDIT_URL, self.guest, FOUND],
             [POST_CREATE_URL, self.guest, FOUND],
             [self.POST_EDIT_URL, self.another, FOUND],
-            [self.COMMENT_URL, self.guest, FOUND],
-            [self.COMMENT_URL, self.author, FOUND],
             [FOLLOW_INDEX_URL, self.author, OK],
+            [FOLLOW_INDEX_URL, self.guest, FOUND],
             [FOLLOW_TO_AUTHOR_URL, self.another, FOUND],
+            [FOLLOW_TO_AUTHOR_URL, self.guest, FOUND],
+            [FOLLOW_TO_AUTHOR_URL, self.author, FOUND],
             [UNFOLLOW_TO_AUTHOR_URL, self.another, FOUND],
             [UNFOLLOW_TO_AUTHOR_URL, self.author, NOT_FOUND],
+            [UNFOLLOW_TO_AUTHOR_URL, self.guest, FOUND],
         ]
         for url, client, status_code in url_client_status_code:
             with self.subTest(url=url, status_code=status_code):
@@ -100,11 +98,12 @@ class PostsURLTests(TestCase):
             [POST_CREATE_URL, self.guest, POST_CREATE_REDIRECT],
             [self.POST_EDIT_URL, self.guest, self.POST_EDIT_REDIRECT],
             [self.POST_EDIT_URL, self.another, self.POST_DETAIL_URL],
-            [self.COMMENT_URL, self.guest, self.POST_COMMENT_REDIRECT],
             [FOLLOW_INDEX_URL, self.guest, FOLLOW_INDEX_REDIRECT],
             [FOLLOW_TO_AUTHOR_URL, self.guest, FOLLOW_TO_AUTHOR_REDIRECT],
-            [UNFOLLOW_TO_AUTHOR_URL, self.guest, UNFOLLOW_TO_AUTHOR_REDIRECT],
+            [FOLLOW_TO_AUTHOR_URL, self.another, PROFILE_URL],
             [FOLLOW_TO_AUTHOR_URL, self.author, PROFILE_URL],
+            [UNFOLLOW_TO_AUTHOR_URL, self.guest, UNFOLLOW_TO_AUTHOR_REDIRECT],
+            [UNFOLLOW_TO_AUTHOR_URL, self.another, PROFILE_URL],
         ]
         for url, client, redirect in url_client_redirect:
             with self.subTest(url=url, redirect=redirect):

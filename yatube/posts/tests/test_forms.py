@@ -12,6 +12,8 @@ from posts.models import Post, Group, User, Comment
 USERNAME = 'author'
 POST_CREATE_URL = reverse('posts:post_create')
 PROFILE_URL = reverse('posts:profile', args=[USERNAME])
+LOGIN_URL = reverse('users:login')
+POST_CREATE_REDIRECT = f'{LOGIN_URL}?next={POST_CREATE_URL}'
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 BYTE_STRING = (
     b'\x47\x49\x46\x38\x39\x61\x02\x00'
@@ -29,6 +31,9 @@ class PostCreateFormTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username=USERNAME)
+        cls.guest = Client()
+        cls.author = Client()
+        cls.author.force_login(cls.user)
         cls.group = Group.objects.create(
             title='test group',
             slug='test-slug',
@@ -46,22 +51,16 @@ class PostCreateFormTests(TestCase):
             image=cls.image
         )
         cls.POST_EDIT_URL = reverse('posts:post_edit',
-                                    args=[cls.post.id]
-                                    )
+                                    args=[cls.post.id])
         cls.POST_DETAIL_URL = reverse('posts:post_detail',
-                                      args=[cls.post.id]
-                                      )
+                                      args=[cls.post.id])
         cls.COMMENT_URL = reverse('posts:add_comment', args=[cls.post.id])
+        cls.POST_EDIT_REDIRECT = f'{LOGIN_URL}?next={cls.POST_EDIT_URL}'
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
-
-    def setUp(self):
-        self.guest = Client()
-        self.author = Client()
-        self.author.force_login(self.user)
 
     def test_create_post(self):
         """Валидная форма создает запись в Post."""
@@ -141,13 +140,11 @@ class PostCreateFormTests(TestCase):
 
     def test_only_author_can_comment(self):
         """Гость не может оставить комментарий."""
-        comments_count = Comment.objects.count()
         self.guest.post(
             self.COMMENT_URL,
             data={'text': 'Test comment'},
-            follow=True
         )
-        self.assertEqual(comments_count, Comment.objects.count())
+        self.assertFalse(Comment.objects.filter(text='Test comment').exists())
 
     def test_comment_on_post_detail_page(self):
         """Комментарий корректно отображается на странице поста."""
@@ -166,3 +163,41 @@ class PostCreateFormTests(TestCase):
         comment = comments.pop()
         self.assertEqual(form_data['text'], comment.text)
         self.assertEqual(self.user, comment.author)
+        self.assertEqual(self.post, response.context['post'])
+
+    def test_guest_cant_create_post(self):
+        """Гость не может создать пост."""
+        posts_count = Post.objects.count()
+        form_data = {
+            'text': 'test text 2',
+            'group': self.group.id,
+        }
+        response = self.guest.post(
+            POST_CREATE_URL,
+            data=form_data,
+            follow=True
+        )
+        self.assertRedirects(response, POST_CREATE_REDIRECT)
+        self.assertEqual(Post.objects.count(), posts_count)
+
+    def test_guest_cant_edit_post(self):
+        """Гость не может редактировать пост."""
+        posts_count = Post.objects.count()
+        group = Group.objects.create(
+            title='test group 3',
+            slug='test-slug-3',
+            description='test description 3',
+        )
+        form_data = {
+            'text': 'test text 3',
+            'group': group.id,
+        }
+        response = self.guest.post(
+            self.POST_EDIT_URL,
+            data=form_data,
+            follow=True
+        )
+        self.assertRedirects(response, self.POST_EDIT_REDIRECT)
+        self.assertEqual(Post.objects.count(), posts_count)
+        self.assertNotEqual(form_data['text'], self.post.text)
+        self.assertNotEqual(form_data['group'], self.post.group_id)

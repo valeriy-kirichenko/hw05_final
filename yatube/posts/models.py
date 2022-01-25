@@ -2,6 +2,7 @@ from core.models import CreatedModel
 
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -50,8 +51,7 @@ class Post(CreatedModel):
         help_text='Изображение которое имеет отношение к посту'
     )
 
-    class Meta:
-        ordering = ('-created',)
+    class Meta(CreatedModel.Meta):
         verbose_name = 'Пост'
         verbose_name_plural = 'Посты'
 
@@ -80,7 +80,7 @@ class Comment(CreatedModel):
         help_text='Введите текст комментария'
     )
 
-    class Meta:
+    class Meta(CreatedModel.Meta):
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
 
@@ -102,3 +102,15 @@ class Follow(models.Model):
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
+
+    def clean(self):
+        if self.user == self.author:
+            raise ValidationError('Вы не можете подписаться на самого себя')
+        if self.author.following.count() > 0:
+            raise ValidationError(
+                'Нельзя подписаться на автора более одного раза'
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)

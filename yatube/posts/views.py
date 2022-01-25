@@ -52,7 +52,6 @@ def post_detail(request, post_id):
     return render(request, 'posts/post_detail.html', {
         'post': post,
         'form': form,
-        'comments': post.comments.all()
     })
 
 

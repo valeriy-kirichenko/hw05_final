@@ -10,6 +10,7 @@ from django.urls import reverse
 from posts.models import Post, Group, User, Comment
 
 USERNAME = 'author'
+USERNAME_NOT_AUTHOR = 'not author'
 POST_CREATE_URL = reverse('posts:post_create')
 PROFILE_URL = reverse('posts:profile', args=[USERNAME])
 LOGIN_URL = reverse('users:login')
@@ -31,9 +32,14 @@ class PostCreateFormTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username=USERNAME)
+        cls.user_not_author = User.objects.create_user(
+            username=USERNAME_NOT_AUTHOR
+        )
         cls.guest = Client()
         cls.author = Client()
+        cls.not_author = Client()
         cls.author.force_login(cls.user)
+        cls.not_author.force_login(cls.user_not_author)
         cls.group = Group.objects.create(
             title='test group',
             slug='test-slug',
@@ -138,13 +144,13 @@ class PostCreateFormTests(TestCase):
             forms.fields.CharField
         )
 
-    def test_only_author_can_comment(self):
+    def test_guest_cant_comment(self):
         """Гость не может оставить комментарий."""
         self.guest.post(
             self.COMMENT_URL,
             data={'text': 'Test comment'},
         )
-        self.assertFalse(Comment.objects.filter(text='Test comment').exists())
+        self.assertFalse(Comment.objects.all())
 
     def test_comment_on_post_detail_page(self):
         """Комментарий корректно отображается на странице поста."""
@@ -167,37 +173,29 @@ class PostCreateFormTests(TestCase):
 
     def test_guest_cant_create_post(self):
         """Гость не может создать пост."""
-        posts_count = Post.objects.count()
-        form_data = {
-            'text': 'test text 2',
-            'group': self.group.id,
-        }
+        posts = set(Post.objects.all())
         response = self.guest.post(
             POST_CREATE_URL,
-            data=form_data,
+            data={'text': 'test text 2', 'group': self.group.id},
             follow=True
         )
         self.assertRedirects(response, POST_CREATE_REDIRECT)
-        self.assertEqual(Post.objects.count(), posts_count)
+        self.assertFalse(set(Post.objects.all()) - posts)
 
-    def test_guest_cant_edit_post(self):
-        """Гость не может редактировать пост."""
+    def test_guest_and_not_author_cant_edit_post(self):
+        """Гость и не автор не могут редактировать пост."""
         posts_count = Post.objects.count()
-        group = Group.objects.create(
-            title='test group 3',
-            slug='test-slug-3',
-            description='test description 3',
-        )
-        form_data = {
-            'text': 'test text 3',
-            'group': group.id,
-        }
-        response = self.guest.post(
-            self.POST_EDIT_URL,
-            data=form_data,
-            follow=True
-        )
-        self.assertRedirects(response, self.POST_EDIT_REDIRECT)
-        self.assertEqual(Post.objects.count(), posts_count)
-        self.assertNotEqual(form_data['text'], self.post.text)
-        self.assertNotEqual(form_data['group'], self.post.group_id)
+        client_redirect = [
+            [self.guest, self.POST_EDIT_REDIRECT],
+            [self.not_author, self.POST_DETAIL_URL]
+        ]
+        for client, redirect in client_redirect:
+            with self.subTest(url=redirect):
+                response = client.post(
+                    self.POST_EDIT_URL,
+                    data={'text': 'test text 3', 'group': self.group.id},
+                    follow=True
+                )
+                self.assertRedirects(response, redirect)
+                self.assertEqual(Post.objects.count(), posts_count)
+                self.assertEqual(Post.objects.get(id=self.post.id), self.post)

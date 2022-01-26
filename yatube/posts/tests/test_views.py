@@ -106,15 +106,22 @@ class PostPagesTests(TestCase):
         self.assertEqual(response.slug, self.group.slug)
         self.assertEqual(response.description, self.group.description)
 
-    def test_post_not_on_another_group_posts_page(self):
-        """Пост не отображается на странице не своей группы."""
+    def test_post_not_on_another_group_and_not_follower_pages(self):
+        """Пост не отображается на странице не своей группы
+        и на странице не подписанного на автора пользователя."""
         Group.objects.create(
             title='test group 2',
             slug=GROUP_SLUG_2,
             description='test description',
         )
-        response = self.guest.get(GROUP_POSTS_2_URL)
-        self.assertNotIn(self.post, response.context['page_obj'])
+        client_url = [
+            [self.guest, GROUP_POSTS_2_URL],
+            [self.not_author, FOLLOW_INDEX_URL]
+        ]
+        for client, url in client_url:
+            with self.subTest(url=url):
+                response = client.get(url)
+                self.assertNotIn(self.post, response.context['page_obj'])
 
     def test_pages_contains_correct_number_of_posts(self):
         """Paginator работает корректно на первой и второй странице."""
@@ -158,18 +165,9 @@ class FollowTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.follower = User.objects.create_user(username='follower')
-        cls.not_follower = User.objects.create_user(username='not follower')
         cls.author_user = User.objects.create_user(username=USERNAME)
-        cls.author = Client()
-        cls.user_1 = Client()
-        cls.user_2 = Client()
-        cls.author.force_login(cls.author_user)
-        cls.user_1.force_login(cls.follower)
-        cls.user_2.force_login(cls.not_follower)
-        cls.post = Post.objects.create(
-            author=cls.author_user,
-            text='test text',
-        )
+        cls.user_follower = Client()
+        cls.user_follower.force_login(cls.follower)
 
     @classmethod
     def tearDownClass(cls):
@@ -179,43 +177,17 @@ class FollowTests(TestCase):
     def test_authorized_can_follow(self):
         """Авторизованный пользователь может
         подписываться на других пользователей."""
-        self.user_1.get(FOLLOW_TO_AUTHOR_URL)
+        self.user_follower.get(FOLLOW_TO_AUTHOR_URL)
         self.assertTrue(Follow.objects.filter(
             user=self.follower.id,
             author=self.author_user.id).exists()
         )
-        self.assertEqual(
-            self.user_1.get(FOLLOW_INDEX_URL).context['page_obj'][0].author,
-            self.post.author
-        )
 
     def test_authorized_can_unfollow(self):
         """Авторизованный пользователь может отказаться от подписки."""
-        self.user_1.get(FOLLOW_TO_AUTHOR_URL)
-        follow_count = len(
-            self.user_1.get(FOLLOW_INDEX_URL).context['page_obj']
-        )
-        self.user_1.get(UNFOLLOW_TO_AUTHOR_URL)
+        self.user_follower.get(FOLLOW_TO_AUTHOR_URL)
+        self.user_follower.get(UNFOLLOW_TO_AUTHOR_URL)
         self.assertFalse(Follow.objects.filter(
             user=self.follower.id,
             author=self.author_user.id).exists()
         )
-        self.assertNotEqual(
-            follow_count,
-            len(self.user_1.get(FOLLOW_INDEX_URL).context['page_obj'])
-        )
-
-    def test_follow_index_page_show_new_author_post(self):
-        """Новая запись пользователя появляется в ленте тех,
-        кто на него подписан и не появляется в ленте тех, кто не подписан."""
-        self.user_1.get(FOLLOW_TO_AUTHOR_URL)
-        post_2 = Post.objects.create(
-            author=self.author_user,
-            text='test text 2',
-        )
-        client_assert = [
-            [self.user_1, self.assertIn],
-            [self.user_2, self.assertNotIn],
-        ]
-        for client, asert in client_assert:
-            asert(post_2, client.get(FOLLOW_INDEX_URL).context['page_obj'])

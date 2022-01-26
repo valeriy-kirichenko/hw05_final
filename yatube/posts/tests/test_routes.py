@@ -1,5 +1,5 @@
 from django.test import TestCase
-from django.urls import reverse
+from django.urls import reverse, resolve
 
 
 class PostsURLTests(TestCase):
@@ -9,22 +9,19 @@ class PostsURLTests(TestCase):
         GROUP_SLUG = 'test-slug'
         POST_ID = 1
         cases = [
-            ['posts:index', None, '/'],
-            ['posts:group_posts', [GROUP_SLUG], f'/group/{GROUP_SLUG}/'],
-            ['posts:profile', [USERNAME], f'/profile/{USERNAME}/'],
-            ['posts:post_detail', [POST_ID], f'/posts/{POST_ID}/'],
-            ['posts:post_edit', [POST_ID], f'/posts/{POST_ID}/edit/'],
-            ['posts:post_create', None, '/create/'],
-            ['posts:follow_index', None, '/follow/'],
-            ['posts:profile_follow',
-             [USERNAME],
-             f'/profile/{USERNAME}/follow/'],
-            ['posts:profile_unfollow',
-             [USERNAME],
-             f'/profile/{USERNAME}/unfollow/'],
+            [None, '/'],
+            [[GROUP_SLUG], f'/group/{GROUP_SLUG}/'],
+            [[USERNAME], f'/profile/{USERNAME}/'],
+            [[POST_ID], f'/posts/{POST_ID}/'],
+            [[POST_ID], f'/posts/{POST_ID}/edit/'],
+            [None, '/create/'],
+            [None, '/follow/'],
+            [[USERNAME], f'/profile/{USERNAME}/follow/'],
+            [[USERNAME], f'/profile/{USERNAME}/unfollow/'],
         ]
-        for name, argument, expected_url in cases:
-            with self.subTest(name=name):
-                self.assertEqual(reverse(name, args=argument),
-                                 expected_url
-                                 )
+        for argument, expected_url in cases:
+            with self.subTest(url=expected_url):
+                self.assertEqual(
+                    reverse(resolve(expected_url).view_name, args=argument),
+                    expected_url
+                )

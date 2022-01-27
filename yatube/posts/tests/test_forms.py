@@ -45,6 +45,11 @@ class PostCreateFormTests(TestCase):
             slug='test-slug',
             description='test description',
         )
+        cls.group_2 = Group.objects.create(
+            title='test group 2',
+            slug='test-slug-2',
+            description='test description 2',
+        )
         cls.image = SimpleUploadedFile(
             name='small.gif',
             content=BYTE_STRING,
@@ -101,11 +106,6 @@ class PostCreateFormTests(TestCase):
     def test_edit_post(self):
         """Валидная форма редактирует запись в Post."""
         posts_count = Post.objects.count()
-        group = Group.objects.create(
-            title='test group 3',
-            slug='test-slug-3',
-            description='test description 3',
-        )
         image = SimpleUploadedFile(
             name='another_small.gif',
             content=BYTE_STRING,
@@ -113,7 +113,7 @@ class PostCreateFormTests(TestCase):
         )
         form_data = {
             'text': 'test text 3',
-            'group': group.id,
+            'group': self.group_2.id,
             'image': image
         }
         response = self.author.post(
@@ -197,12 +197,12 @@ class PostCreateFormTests(TestCase):
 
     def test_guest_and_not_author_cant_edit_post(self):
         """Гость и не автор не могут редактировать пост."""
-        posts_count = Post.objects.count()
-        group = Group.objects.create(
-            title='test group 4',
-            slug='test-slug-4',
-            description='test description 4',
+        image = SimpleUploadedFile(
+            name='another_small.gif',
+            content=BYTE_STRING,
+            content_type='image/gif'
         )
+        posts_count = Post.objects.count()
         client_redirect = [
             [self.guest, self.POST_EDIT_REDIRECT],
             [self.not_author, self.POST_DETAIL_URL]
@@ -211,16 +211,17 @@ class PostCreateFormTests(TestCase):
             with self.subTest(url=redirect):
                 response = client.post(
                     self.POST_EDIT_URL,
-                    data={'text': 'test text 3', 'group': group.id},
+                    data={
+                        'text': 'test text 3',
+                        'group': self.group_2.id,
+                        'image': image
+                    },
                     follow=True
                 )
+                post = Post.objects.get(id=self.post.id)
                 self.assertRedirects(response, redirect)
                 self.assertEqual(Post.objects.count(), posts_count)
-                self.assertEqual(
-                    Post.objects.get(id=self.post.id).text,
-                    self.post.text
-                )
-                self.assertEqual(
-                    Post.objects.get(id=self.post.id).group_id,
-                    self.post.group_id
-                )
+                self.assertEqual(post.text, self.post.text)
+                self.assertEqual(post.group_id, self.post.group_id)
+                self.assertEqual(post.image, self.post.image)
+                self.assertEqual(post.author, self.post.author)

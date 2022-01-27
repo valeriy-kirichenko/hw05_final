@@ -185,7 +185,10 @@ class FollowTests(TestCase):
 
     def test_authorized_can_unfollow(self):
         """Авторизованный пользователь может отказаться от подписки."""
-        self.user_follower.get(FOLLOW_TO_AUTHOR_URL)
+        Follow.objects.create(
+            user=self.follower,
+            author=self.author_user
+        )
         self.user_follower.get(UNFOLLOW_TO_AUTHOR_URL)
         self.assertFalse(Follow.objects.filter(
             user=self.follower.id,

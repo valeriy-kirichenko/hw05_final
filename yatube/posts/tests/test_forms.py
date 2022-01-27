@@ -97,6 +97,7 @@ class PostCreateFormTests(TestCase):
         self.assertEqual(form_data['group'], post.group_id)
         self.assertEqual(self.user, post.author)
 
+    @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
     def test_edit_post(self):
         """Валидная форма редактирует запись в Post."""
         posts_count = Post.objects.count()
@@ -105,9 +106,15 @@ class PostCreateFormTests(TestCase):
             slug='test-slug-3',
             description='test description 3',
         )
+        image = SimpleUploadedFile(
+            name='another_small.gif',
+            content=BYTE_STRING,
+            content_type='image/gif'
+        )
         form_data = {
             'text': 'test text 3',
             'group': group.id,
+            'image': image
         }
         response = self.author.post(
             self.POST_EDIT_URL,
@@ -119,6 +126,7 @@ class PostCreateFormTests(TestCase):
         self.assertEqual(Post.objects.count(), posts_count)
         self.assertEqual(form_data['text'], post.text)
         self.assertEqual(form_data['group'], post.group_id)
+        self.assertIn(image.name, post.image.name)
         self.assertEqual(self.post.author, post.author)
 
     def test_post_edit_and_create_pages_show_correct_form(self):
@@ -146,11 +154,12 @@ class PostCreateFormTests(TestCase):
 
     def test_guest_cant_comment(self):
         """Гость не может оставить комментарий."""
+        comments = set(Comment.objects.all())
         self.guest.post(
             self.COMMENT_URL,
             data={'text': 'Test comment'},
         )
-        self.assertFalse(Comment.objects.all())
+        self.assertFalse(set(Comment.objects.all()) - comments)
 
     def test_comment_on_post_detail_page(self):
         """Комментарий корректно отображается на странице поста."""
@@ -176,7 +185,11 @@ class PostCreateFormTests(TestCase):
         posts = set(Post.objects.all())
         response = self.guest.post(
             POST_CREATE_URL,
-            data={'text': 'test text 2', 'group': self.group.id},
+            data={
+                'text': 'test text 2',
+                'group': self.group.id,
+                'image': self.image
+            },
             follow=True
         )
         self.assertRedirects(response, POST_CREATE_REDIRECT)
@@ -185,6 +198,11 @@ class PostCreateFormTests(TestCase):
     def test_guest_and_not_author_cant_edit_post(self):
         """Гость и не автор не могут редактировать пост."""
         posts_count = Post.objects.count()
+        group = Group.objects.create(
+            title='test group 4',
+            slug='test-slug-4',
+            description='test description 4',
+        )
         client_redirect = [
             [self.guest, self.POST_EDIT_REDIRECT],
             [self.not_author, self.POST_DETAIL_URL]
@@ -193,9 +211,16 @@ class PostCreateFormTests(TestCase):
             with self.subTest(url=redirect):
                 response = client.post(
                     self.POST_EDIT_URL,
-                    data={'text': 'test text 3', 'group': self.group.id},
+                    data={'text': 'test text 3', 'group': group.id},
                     follow=True
                 )
                 self.assertRedirects(response, redirect)
                 self.assertEqual(Post.objects.count(), posts_count)
-                self.assertEqual(Post.objects.get(id=self.post.id), self.post)
+                self.assertEqual(
+                    Post.objects.get(id=self.post.id).text,
+                    self.post.text
+                )
+                self.assertEqual(
+                    Post.objects.get(id=self.post.id).group_id,
+                    self.post.group_id
+                )

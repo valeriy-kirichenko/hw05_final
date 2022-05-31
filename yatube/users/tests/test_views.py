@@ -19,44 +19,6 @@ class UsersViewsTests(TestCase):
         )
         UsersViewsTests.authorized_client.force_login(self.user)
 
-    def test_pages_uses_correct_template_guest(self):
-        """URL-адрес использует соответствующий шаблон."""
-        templates_pages_names = {
-            reverse('users:login'): 'users/login.html',
-            reverse('users:signup'): 'users/signup.html',
-        }
-        for reverse_name, template in templates_pages_names.items():
-            with self.subTest(reverse_name=reverse_name):
-                self.assertTemplateUsed(
-                    UsersViewsTests.guest_client.get(reverse_name),
-                    template
-                )
-
-    def test_pages_uses_correct_template_authorized(self):
-        """URL-адрес использует соответствующий шаблон."""
-        templates_pages_names = {
-            reverse('users:password_change_form'):
-                'users/password_change_form.html',
-            reverse('users:password_change_done'):
-                'users/password_change_done.html',
-            reverse('users:password_reset_form'):
-                'users/password_reset_form.html',
-            reverse('users:password_reset_done'):
-                'users/password_reset_done.html',
-            reverse('users:password_reset_confirm',
-                    args=['<uidb64>', '<token>']
-                    ): 'users/password_reset_confirm.html',
-            reverse('users:password_reset_complete'):
-                'users/password_reset_complete.html',
-            reverse('users:logout'): 'users/logged_out.html',
-        }
-        for reverse_name, template in templates_pages_names.items():
-            with self.subTest(reverse_name=reverse_name):
-                self.assertTemplateUsed(
-                    UsersViewsTests.authorized_client.get(reverse_name),
-                    template
-                )
-
     def test_users_sign_up_show_correct_context_guest(self):
         """Шаблон sign_up сформирован с правильным контекстом."""
         response = UsersViewsTests.guest_client.get(

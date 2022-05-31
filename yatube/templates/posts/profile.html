@@ -3,27 +3,65 @@
   Профайл пользователя {{ user.get_full_name }}
 {% endblock %}
 {% block content %}
-  <div class="container py-5">   
-    <h1>Все посты пользователя {{ author.get_full_name }}</h1>
-    <h3>Всего постов: {{ author.posts.count }}</h3>
-    <h3>Всего подписок: {{ author.follower.count }}</h3>
-    <h3>Всего подписчиков: {{ author.following.count }}</h3>
-    <h3>Всего комментариев: {{ author.comments.count }}</h3>
-    {% if author != user and user.is_authenticated %}
-      {% if following %}
-        <a class="btn btn-lg btn-light"
-           href="{% url 'posts:profile_unfollow' author.username %}"
-           role="button">Отписаться</a>
-      {% else %}
-        <a class="btn btn-lg btn-primary"
-           href="{% url 'posts:profile_follow' author.username %}"
-           role="button">Подписаться</a>
-      {% endif %}
-    {% endif %}
-    {% for post in page_obj %}   
-      {% include 'posts/includes/post.html' with is_profile=True %}
-      <p>{% if not forloop.last %}<hr>{% endif %}</p>
-    {% endfor %}
-    {% include 'includes/paginator.html' %}
+{% load thumbnail %}
+
+<div class="container py-4">
+  <div class="card shadow-sm p-2 h-100 border-primary">
+    <div class="row">
+      <div class="col col-xxl-2 col-xl-3 col-lg-4 col-lg-2 col-md-4 col-sm-6 col-12">
+        {% if request.user == author%}
+          <a href="{% url 'users:user_profile_form' author.username %}">{% endif %}
+          <img src="{{ author.userprofile.get_avatar }}" class="card-img rounded-circle"></a>
+      </div>
+      <div class="col col-xxl-2 col-xl-2  col-lg-3 col-md-8 col-sm-6 col-12">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item lead">
+            <strong>
+              {% if author.get_full_name %}
+                {{ author.get_full_name }}
+              {% else %}
+                {{ author.username }}
+              {% endif %}</strong>
+          </li>
+          <li class="list-group-item">
+            Подписчиков: {{ author.following.count }}<br>
+            Подписан: {{ author.follower.count }}
+          </li>
+          <li class="list-group-item">
+            Записей: {{ author.posts.count }}
+          </li>
+          <li class="list-group-item"> 
+            Комментарии: {{ author.comments.count }}
+          </li>
+        </ul>
+      </div>
+      <div class="col col-xxl-8 col-xl-7 col-lg-5">
+        <div class="card-body"> 
+          <strong>О себе:</strong>
+          <p class="card-text">
+            {% if author.userprofile.about %}
+              {{ author.userprofile.about }}
+            {% else %}
+              Автор еще не заполнил этот раздел
+            {% endif %}
+          </p>
+          {% if request.user == author%}
+            <br>
+            <a class="btn btn-primary" 
+              style ="position: absolute; bottom: 10px; right: 10px;" 
+              href="{% url 'users:user_profile_form' author.username %}">
+              Редактировать профиль
+            </a>{% endif %}
+        </div>
+      </div>
+    </div>
   </div>
+  <div class="row py-4"> 
+    <h1 class="text-center">Все посты автора</h1>
+  </div>
+  {% for post in page_obj %}   
+    {% include 'posts/includes/post.html' with is_profile=True %}
+  {% endfor %}
+  {% include 'includes/paginator.html' %}
+</div>
 {% endblock %} 

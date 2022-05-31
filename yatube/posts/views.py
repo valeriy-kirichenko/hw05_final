@@ -4,6 +4,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 
 from .forms import CommentForm, PostForm
 from .models import Follow, Post, Group, User
+from users.models import UserProfile
 
 from yatube.settings import POSTS_PER_PAGE
 
@@ -30,6 +31,7 @@ def group_posts(request, slug):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
+    UserProfile.objects.get_or_create(user=author)
     following = (
         request.user.is_authenticated and author != request.user
         and Follow.objects.filter(

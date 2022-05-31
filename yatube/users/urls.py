@@ -1,4 +1,5 @@
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.decorators import login_required
 
 from django.urls import path
 
@@ -11,40 +12,46 @@ urlpatterns = [
     path('signup/', views.SignUp.as_view(), name='signup'),
     path(
         'logout/',
-        auth_views.LogoutView.as_view(template_name='users/logged_out.html'),
+        login_required(auth_views.LogoutView.as_view(
+            template_name='users/logged_out.html'
+        )),
         name='logout'
     ),
     path(
         'login/',
-        auth_views.LoginView.as_view(template_name='users/login.html'),
+        auth_views.LoginView.as_view(
+            template_name='users/login.html',
+            redirect_authenticated_user=True
+        ),
         name='login'
     ),
     path(
         'password_reset_form/',
-        auth_views.PasswordResetView.as_view(
+        login_required(auth_views.PasswordResetView.as_view(
             template_name='users/password_reset_form.html'
-        ),
+        )),
         name='password_reset_form'
     ),
     path(
         'password_reset/done/',
-        auth_views.PasswordResetDoneView.as_view(
+        login_required(auth_views.PasswordResetDoneView.as_view(
             template_name='users/password_reset_done.html'
-        ),
+        )),
         name='password_reset_done'
     ),
     path(
         'reset/<uidb64>/<token>/',
-        auth_views.PasswordResetConfirmView.as_view(
+        login_required(auth_views.PasswordResetConfirmView.as_view(
+            success_url='login/',
             template_name="users/password_reset_confirm.html"
-        ),
+        )),
         name='password_reset_confirm'
     ),
     path(
         'reset/done/',
-        auth_views.PasswordResetCompleteView.as_view(
+        login_required(auth_views.PasswordResetCompleteView.as_view(
             template_name='users/password_reset_complete.html'
-        ),
+        )),
         name='password_reset_complete'
     ),
     path(
@@ -60,5 +67,10 @@ urlpatterns = [
             template_name='users/password_change_done.html'
         ),
         name='password_change_done'
+    ),
+    path(
+        '<str:username>/user_profile_form/',
+        views.user_profile_form,
+        name='user_profile_form'
     ),
 ]

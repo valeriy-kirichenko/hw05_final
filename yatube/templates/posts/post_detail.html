@@ -1,48 +1,61 @@
-
 {% extends 'base.html' %}
 {% load thumbnail %}
 {% block title %}
   Пост {{ post.text|slice:":30" }}...
 {% endblock %}
 {% block content %}
-  <div class="row">
-    <aside class="col-12 col-md-3">
-      <ul class="list-group list-group-flush">
-        <li class="list-group-item">
-          Дата публикации: {{ post.created|date:"d E Y" }} 
-        </li>
-        {% if post.group %}   
-          <li class="list-group-item">
-            Группа: 
-            <a href="{% url 'posts:group_posts' post.group.slug %}">
-              {{ post.group.title }}
-            </a>
+<div class="container">
+  <div class="row justify-content">
+    <div class="col col-lg-3 py-4">
+      <div class="card shadow-sm p-2">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item lead">
+            <a href="{% url 'posts:profile' post.author.username %}" class="text-decoration-none"><strong>
+              {% if post.author.get_full_name %}
+                {{ post.author.get_full_name }}
+              {% else %}
+                {{ post.author.username }}
+              {% endif %}</strong></a> 
           </li>
-        {% endif %}
-        <li class="list-group-item">
-          Автор: 
-          <a href="{% url 'posts:profile' post.author.username %}">
-            {{ post.author.get_full_name }}
-          </a>
-        </li>
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-          Всего постов автора:  <span >{{ post.author.posts.count }}</span>
-        </li>
-      </ul>
-    </aside>
-    <article class="col-12 col-md-9">
-      <p>
+          <li class="list-group-item">
+            Подписчиков: {{ post.author.following.count }}<br>
+            Подписан: {{ post.author.follower.count }}
+          <li class="list-group-item">
+            Записей: {{ post.author.posts.count }}
+          </li>
+          {% if post.group %}
+            <li class="list-group-item"> 
+              <a href="{% url 'posts:group_posts' post.group.slug %}">
+                {{ post.group.title }}
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    <div class="col col-12 col-lg-9 py-4">
+      <div class="card shadow-sm">
         {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
-          <img class="card-img my-2" src="{{ im.url }}">
+          <img src="{{ im.url }}" class="card-img-top">
         {% endthumbnail %}
-        {{ post.text|linebreaks }}
-      </p>
-      {% if user == post.author %}
-        <a class="btn btn-primary" href="{% url 'posts:post_edit' post.id%}">
-          редактировать запись
-        </a>
-      {% endif %}
+        <div class="card-body">
+          {{ post.text|linebreaks }}
+          <div class="row">
+            <div class="col">
+              {% if user == post.author %}
+                <a class="btn btn-primary text-decoration-none" href="{% url 'posts:post_edit' post.id%}">
+                  редактировать запись
+                </a>
+              {% endif %} 
+            </div>
+            <div class="col text-muted text-end">
+              {{ post.created|date:"d E Y H:i" }}
+            </div>
+          </div>
+        </div>
+      </div>
       {% include 'posts/includes/post_comment.html' %}
-    </article>
+    </div>
   </div>
+</div>
 {% endblock %}

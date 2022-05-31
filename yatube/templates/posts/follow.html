@@ -10,7 +10,6 @@
     {% cache 20 follow_index page_obj.number  %}
       {% for post in page_obj %}
         {% include 'posts/includes/post.html' %}
-        <p>{% if not forloop.last %}<hr>{% endif %}</p>
       {% endfor %} 
     {% endcache %} 
     {% include 'includes/paginator.html' %}

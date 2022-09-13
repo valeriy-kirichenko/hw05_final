@@ -8,6 +8,14 @@ User = get_user_model()
 
 
 class Group(models.Model):
+    """Модель для группы.
+
+    Attributes:
+        title (str): название группы.
+        slug (str): уникальное название латиницей.
+        description (str): описание.
+    """
+
     title = models.CharField(max_length=200, verbose_name='Название группы')
     slug = models.SlugField(
         unique=True,
@@ -15,15 +23,26 @@ class Group(models.Model):
     )
     description = models.TextField(verbose_name='Описание')
 
-    def __str__(self):
-        return self.title
-
     class Meta:
         verbose_name = 'Группа'
         verbose_name_plural = 'Группы'
 
+    def __str__(self):
+        """Возвращает строковое представление модели"""
+
+        return self.title
+
 
 class Post(CreatedModel):
+    """Модель для поста.
+
+    Attributes:
+        text (str): текст поста.
+        author (int): id автора.
+        group (int): id группы.
+        image (str): картинка.
+    """
+
     text = models.TextField(
         verbose_name='Текст поста',
         help_text='Текст нового поста'
@@ -56,6 +75,8 @@ class Post(CreatedModel):
         verbose_name_plural = 'Посты'
 
     def __str__(self):
+        """Возвращает строковое представление модели"""
+
         return (
             f'{self.pk} {self.text[:15]} {self.created} '
             f'{self.author.get_username()} {self.group}'
@@ -63,6 +84,14 @@ class Post(CreatedModel):
 
 
 class Comment(CreatedModel):
+    """Модель для комментариев.
+
+    Attributes:
+        post (int): id поста.
+        author (int): id автора.
+        text (str): текст комментария.
+    """
+
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
@@ -86,6 +115,13 @@ class Comment(CreatedModel):
 
 
 class Follow(models.Model):
+    """Модель для подписок.
+
+    Attributes:
+        user (int): id подписчика.
+        author (int): id пользователя на которого подписываются.
+    """
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -104,6 +140,15 @@ class Follow(models.Model):
         verbose_name_plural = 'Подписки'
 
     def clean(self):
+        """Проверка создаваемого объекта.
+
+        Raises:
+            ValidationError: ошибка при попытке подписки на самого себя.
+        Raises:
+            ValidationError: ошибка при попытке подписки на автора более
+            одного раза.
+        """
+
         if self.user == self.author:
             raise ValidationError('Вы не можете подписаться на самого себя')
         if self.author.following.count() > 0:
@@ -112,5 +157,7 @@ class Follow(models.Model):
             )
 
     def save(self, *args, **kwargs):
+        """Вызывает метод full_clean() класса для запуска всех проверок."""
+
         self.full_clean()
         return super().save(*args, **kwargs)

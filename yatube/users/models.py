@@ -3,6 +3,14 @@ from django.contrib.auth.models import User
 
 
 class UserProfile(models.Model):
+    """Модель для профиля пользователя.
+
+    Attributes:
+        user (int): id пользователя.
+        avatar (str): аватар.
+        about (str): о себе.
+    """
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -31,9 +39,20 @@ class UserProfile(models.Model):
         verbose_name_plural = 'Профили пользователей'
 
     def __str__(self):
+        """Возвращает строковое представление модели"""
+
         return self.user.username
 
     def get_avatar(self):
+        """Проверяет наличие аватара.
+
+        Returns:
+            str: url аватара по умолчанию если пользоваетль не загружал
+            собственный.
+        Returns:
+            str: url аватара пользователя.
+        """
+
         if not self.avatar:
             return '/static/img/Missing_avatar.svg'
         return self.avatar.url

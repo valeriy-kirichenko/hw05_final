@@ -36,7 +36,9 @@ def index(request):
     """
 
     return render(request, 'posts/index.html', {
-        'page_obj': get_paginator_page(request, Post.objects.all())}
+        'page_obj': get_paginator_page(
+            request, Post.objects.select_related('author', 'group').all()
+        )}
     )
 
 
@@ -54,7 +56,9 @@ def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
     return render(request, 'posts/group_list.html', {
         'group': group,
-        'page_obj': get_paginator_page(request, group.posts.all())}
+        'page_obj': get_paginator_page(
+            request, group.posts.select_related('author').all()
+        )}
     )
 
 
@@ -81,7 +85,7 @@ def profile(request, username):
     return render(request, 'posts/profile.html', {
         'author': author,
         'page_obj': get_paginator_page(
-            request, author.posts.all()
+            request, author.posts.select_related('group').all()
         ),
         'following': following,
     })
@@ -204,7 +208,9 @@ def follow_index(request):
         HttpResponse: объект ответа.
     """
 
-    post_list = Post.objects.filter(author__following__user=request.user)
+    post_list = Post.objects.select_related('author', 'group').filter(
+        author__following__user=request.user
+    )
     context = {
         'page_obj': get_paginator_page(request, post_list)
     }
